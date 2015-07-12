@@ -1,9 +1,3 @@
-# stonegold-secretdb
-a demonstration for auto encryption/decryption of db table secret fields in internal training of touch-a-stone-and-turn-it-into-gold
-
-    1. initial code
-
-```java
 package stonegold;
 
 import java.sql.Connection;
@@ -32,4 +26,3 @@ public class Main {
         conn.close();
     }
 }
-```
