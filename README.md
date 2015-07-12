@@ -231,4 +231,178 @@ a demonstration for auto encryption/decryption of db table secret fields in inte
     }
     ```
 
+1. refactor to clean the code.
+
+    ```java
+    package stonegold;
+    
+    import com.google.common.base.Throwables;
+    
+    import java.sql.Connection;
+    import java.sql.SQLException;
+    
+    public class Main {
+        public static void main(String[] args) {
+            try (Connection conn = Jdbc.getConnection("jdbc:h2:~/stonegold", "sa", "")) {
+                Jdbc.execute(conn, "drop table if exists person");
+                Jdbc.execute(conn, "create table  person(name varchar(10), id_no varchar(36), credit_card varchar(32))");
+                Jdbc.execute(conn, "insert into person(name, id_no, credit_card) values(?, ?, ?)",
+                        "bingoo", "321421198312111234", "1111222233334444");
+            } catch (SQLException e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    }
+    
+    package stonegold;
+    
+    import com.google.common.base.Throwables;
+    import stonegold.proxy.ConnectionProxy;
+    
+    import java.sql.Connection;
+    import java.sql.DriverManager;
+    import java.sql.PreparedStatement;
+    
+    public class Jdbc {
+        public static Connection getConnection(String url, String user, String password) {
+            try {
+                Class.forName("org.h2.Driver");
+                return ConnectionProxy.proxy(DriverManager.getConnection(url, user, password));
+            } catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    
+        public static boolean execute(Connection conn, String sql, Object... placeholders) {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                int i = 0;
+                for (Object placeholder : placeholders) {
+                    if (placeholder instanceof String) {
+                        ps.setString(++i, (String) placeholder);
+                    } else {
+                        ps.setObject(++i, placeholder);
+                    }
+                }
+                return ps.execute();
+            } catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    }
+    
+    package stonegold.proxy;
+    
+    import stonegold.Main;
+    
+    import java.lang.reflect.InvocationHandler;
+    import java.lang.reflect.Method;
+    import java.lang.reflect.Proxy;
+    import java.sql.Connection;
+    import java.sql.PreparedStatement;
+    
+    public class ConnectionProxy implements InvocationHandler {
+        private final Connection connection;
+    
+        public ConnectionProxy(Connection connection) {
+            this.connection = connection;
+        }
+    
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            Object invoke = method.invoke(connection, args);
+    
+            String methodName = method.getName();
+            if (!methodName.equals("prepareStatement")) return invoke;
+    
+            String sql = (String) args[0];
+            SqlSecretFieldsParser sqlSecretFieldsParser = new SqlSecretFieldsParser();
+            final SecretFields secretFields = sqlSecretFieldsParser.parse(sql);
+            if (secretFields.isEmpty()) return invoke;
+    
+            final PreparedStatement ps = (PreparedStatement) invoke;
+    
+            return new PreparedStatementProxy(ps, secretFields).createProxy();
+        }
+    
+        public Connection createProxy() {
+            return (Connection) Proxy.newProxyInstance(Main.class.getClassLoader(),
+                    new Class[]{Connection.class}, this);
+        }
+    
+        public static Connection proxy(final Connection connection) {
+            return new ConnectionProxy(connection).createProxy();
+        }
+    }
+    
+    package stonegold.proxy;
+    
+    import java.lang.reflect.InvocationHandler;
+    import java.lang.reflect.Method;
+    import java.lang.reflect.Proxy;
+    import java.sql.PreparedStatement;
+    
+    public class PreparedStatementProxy implements InvocationHandler {
+        private final PreparedStatement ps;
+        private final SecretFields secretFields;
+    
+        public PreparedStatementProxy(PreparedStatement ps, SecretFields secretFields) {
+            this.ps = ps;
+            this.secretFields = secretFields;
+        }
+    
+        public PreparedStatement createProxy() {
+            return (PreparedStatement) Proxy.newProxyInstance(
+                    PreparedStatementProxy.class.getClassLoader(),
+                    new Class[]{PreparedStatement.class},
+                    this);
+        }
+    
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            String name = method.getName();
+            if (!name.equals("setString")) return method.invoke(ps, args);
+    
+            if (!secretFields.isSecretField(args[0])) return method.invoke(ps, args);
+    
+            args[1] = "secret:" + args[1];
+    
+            return method.invoke(ps, args);
+        }
+    }
+    
+    package stonegold.proxy;
+    
+    import com.google.common.collect.ImmutableSet;
+    import com.google.common.primitives.Ints;
+    
+    public class SqlSecretFieldsParser {
+        public SecretFields parse(String sql) {
+            return new SecretFields(ImmutableSet.copyOf(Ints.asList(2, 3)));
+        }
+    }
+    
+    package stonegold.proxy;
+    
+    import com.google.common.collect.ImmutableSet;
+    
+    public class SecretFields {
+        private final ImmutableSet<Integer> secretFields;
+    
+        public SecretFields(ImmutableSet<Integer> secretFields) {
+            this.secretFields = secretFields;
+        }
+    
+        public boolean isEmpty() {
+            return secretFields.isEmpty();
+        }
+    
+        public boolean isSecretField(Object arg) {
+            return secretFields.contains(arg);
+        }
+    }
+    ```
+
+
+
+
 
