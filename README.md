@@ -33,3 +33,12 @@ public class Main {
     }
 }
 ```
+
+    1. repeatable run
+
+```java
+String dropTableSql = "drop table if exists person";
+Statement statement = conn.createStatement();
+statement.execute(dropTableSql);
+statement.close();
+```

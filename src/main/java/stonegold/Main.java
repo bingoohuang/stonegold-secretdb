@@ -1,16 +1,18 @@
 package stonegold;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class Main {
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
         Class.forName("org.h2.Driver");
         Connection conn = DriverManager.getConnection("jdbc:h2:~/stonegold", "sa", "");
 
-        String createTableSql = "create table person(name varchar(10), id_no varchar(18), credit_card varchar(16))";
+        String dropTableSql = "drop table if exists person";
+        Statement statement = conn.createStatement();
+        statement.execute(dropTableSql);
+        statement.close();
+
+        String createTableSql = "create table  person(name varchar(10), id_no varchar(18), credit_card varchar(16))";
         PreparedStatement ps = conn.prepareStatement(createTableSql);
         ps.execute();
         ps.close();
