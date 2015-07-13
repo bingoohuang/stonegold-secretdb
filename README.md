@@ -560,7 +560,7 @@ a demonstration for auto encryption/decryption of db table secret fields in inte
     }
     ```
 
-1. parse sql hint for input/out secret fields auto encryption
+1. parse sql hint for input/out secret fields auto encryption.
 
     ```java
     @Test
@@ -584,4 +584,11 @@ a demonstration for auto encryption/decryption of db table secret fields in inte
         assertThat(person2).isEqualTo(
                 new Person("bingoo", "321421198312111234", "1111222233334444"));
     }
+    ```
+
+1. use AES as encryption/decryption algorithm.
+
+    ```java
+    args[1] = Aes.encrypt((String) args[1], Jdbc.getSecretKey());
+    Aes.decrypt(strResult, Jdbc.getSecretKey());
     ```

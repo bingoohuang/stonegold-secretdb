@@ -1,5 +1,8 @@
 package stonegold.proxy;
 
+import stonegold.Aes;
+import stonegold.Jdbc;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -21,7 +24,7 @@ public class ResultSetProxy implements InvocationHandler {
         if (methodName.equals("getString") || methodName.equals("getObject")) {
             if (secretFields.isSecretOutputField(args[0])) {
                 String strResult = (String) result;
-                if (strResult.startsWith("secret:")) return strResult.substring(7);
+                return Aes.decrypt(strResult, Jdbc.getSecretKey());
             }
         }
 

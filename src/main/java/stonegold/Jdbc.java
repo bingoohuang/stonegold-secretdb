@@ -8,7 +8,7 @@ import java.sql.*;
 import java.util.Properties;
 
 public class Jdbc {
-    static String url, user, password;
+    static String url, user, password, secretKey;
 
     static {
         try {
@@ -18,9 +18,14 @@ public class Jdbc {
             url = jdbcProps.getProperty("url");
             user = jdbcProps.getProperty("user");
             password = jdbcProps.getProperty("password");
+            secretKey = jdbcProps.getProperty("secret.key");
         } catch (IOException ex) {
             throw Throwables.propagate(ex);
         }
+    }
+
+    public static String getSecretKey() {
+        return secretKey;
     }
 
     private static Connection getConnection() {

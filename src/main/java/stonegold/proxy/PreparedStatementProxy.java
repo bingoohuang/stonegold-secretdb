@@ -1,5 +1,8 @@
 package stonegold.proxy;
 
+import stonegold.Aes;
+import stonegold.Jdbc;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -26,7 +29,7 @@ public class PreparedStatementProxy implements InvocationHandler {
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         String name = method.getName();
         if (name.equals("executeQuery")) {
-            ResultSet rs  = (ResultSet) method.invoke(ps, args);
+            ResultSet rs = (ResultSet) method.invoke(ps, args);
 
             if (secretFields.isOutputEmpty()) return rs;
 
@@ -37,7 +40,7 @@ public class PreparedStatementProxy implements InvocationHandler {
 
         if (!secretFields.isSecretInputField(args[0])) return method.invoke(ps, args);
 
-        args[1] = "secret:" + args[1];
+        args[1] = Aes.encrypt((String) args[1], Jdbc.getSecretKey());
 
         return method.invoke(ps, args);
     }
