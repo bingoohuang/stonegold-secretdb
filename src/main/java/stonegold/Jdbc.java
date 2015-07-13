@@ -46,7 +46,8 @@ public class Jdbc {
     public static <T> T execute(BeanMapper<T> beanMapper, String sql, Object... placeholders) {
         try (
                 Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
             bindPlaceholders(ps, placeholders);
             try (ResultSet resultSet = ps.executeQuery()) {
                 return resultSet.next() ? beanMapper.map(resultSet) : null;
@@ -54,6 +55,11 @@ public class Jdbc {
         } catch (SQLException e) {
             throw Throwables.propagate(e);
         }
+    }
+
+    public static <T> T execute(Class<T> beanClass, String sql, Object... placeholders) {
+        DefaultBeanMapper<T> beanMapper = new DefaultBeanMapper<T>(beanClass);
+        return execute(beanMapper, sql, placeholders);
     }
 
     private static void bindPlaceholders(PreparedStatement ps, Object[] placeholders) throws SQLException {
