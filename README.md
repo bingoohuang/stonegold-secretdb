@@ -402,7 +402,119 @@ a demonstration for auto encryption/decryption of db table secret fields in inte
     }
     ```
 
+1. begin to use TDD.
 
+    ```xml
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.12</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>com.google.truth</groupId>
+        <artifactId>truth</artifactId>
+        <version>0.27</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <version>1.4.187</version>
+        <scope>test</scope>
+    </dependency>
+    ```
+
+    ```java
+    package stonegold;
+    
+    import org.junit.Test;
+    
+    import java.sql.Connection;
+    import java.sql.ResultSet;
+    import java.sql.SQLException;
+    
+    import static com.google.common.truth.Truth.assertThat;
+    
+    public class JdbcTest {
+        @Test
+        public void simple() throws SQLException {
+            try (Connection conn = Jdbc.getConnection("jdbc:h2:~/stonegold", "sa", "")) {
+                Jdbc.execute(conn, "drop table if exists person");
+                Jdbc.execute(conn, "create table  person(name varchar(10), id_no varchar(36), credit_card varchar(32))");
+                Jdbc.execute(conn, "insert into person(name, id_no, credit_card) values(?, ?, ?)",
+                        "bingoo", "321421198312111234", "1111222233334444");
+    
+                Person person = Jdbc.execute(conn, new BeanMapper<Person>() {
+                    @Override
+                    public Person map(ResultSet rs) throws SQLException {
+                        return new Person(rs.getString(1), rs.getString(2), rs.getString(3));
+                    }
+                }, "select name, id_no, credit_card from person");
+    
+                assertThat(person).isEqualTo(
+                        new Person("bingoo", "secret:321421198312111234", "secret:1111222233334444"));
+            }
+        }
+    }
+
+    package stonegold;
+    
+    import java.sql.ResultSet;
+    import java.sql.SQLException;
+    
+    public interface BeanMapper<T> {
+        T map(ResultSet rs) throws SQLException;
+    }
+
+    package stonegold;
+    
+    import com.google.common.base.Throwables;
+    import stonegold.proxy.ConnectionProxy;
+    
+    import java.sql.*;
+    
+    public class Jdbc {
+        public static Connection getConnection(String url, String user, String password) {
+            try {
+                return ConnectionProxy.proxy(DriverManager.getConnection(url, user, password));
+            } catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    
+        public static boolean execute(Connection conn, String sql, Object... placeholders) {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                bindPlaceholders(ps, placeholders);
+                return ps.execute();
+            } catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    
+        private static void bindPlaceholders(PreparedStatement ps, Object[] placeholders) throws SQLException {
+            int i = 0;
+            for (Object placeholder : placeholders) {
+                if (placeholder instanceof String) {
+                    ps.setString(++i, (String) placeholder);
+                } else {
+                    ps.setObject(++i, placeholder);
+                }
+            }
+        }
+    
+        public static <T> T execute(Connection conn, BeanMapper<T> beanMapper, String sql, Object... placeholders) {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                bindPlaceholders(ps, placeholders);
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    return resultSet.next() ? beanMapper.map(resultSet) : null;
+                }
+            } catch (SQLException e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    }
+    ```
 
 
 

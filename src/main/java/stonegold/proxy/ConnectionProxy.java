@@ -1,7 +1,5 @@
 package stonegold.proxy;
 
-import stonegold.Main;
-
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -33,7 +31,7 @@ public class ConnectionProxy implements InvocationHandler {
     }
 
     public Connection createProxy() {
-        return (Connection) Proxy.newProxyInstance(Main.class.getClassLoader(),
+        return (Connection) Proxy.newProxyInstance(ConnectionProxy.class.getClassLoader(),
                 new Class[]{Connection.class}, this);
     }
 
