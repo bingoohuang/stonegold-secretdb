@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class PreparedStatementProxy implements InvocationHandler {
     private final PreparedStatement ps;
@@ -24,9 +25,17 @@ public class PreparedStatementProxy implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         String name = method.getName();
+        if (name.equals("executeQuery")) {
+            ResultSet rs  = (ResultSet) method.invoke(ps, args);
+
+            if (secretFields.isOutputEmpty()) return rs;
+
+            return new ResultSetProxy(rs, secretFields).createProxy();
+        }
+
         if (!name.equals("setString")) return method.invoke(ps, args);
 
-        if (!secretFields.isSecretField(args[0])) return method.invoke(ps, args);
+        if (!secretFields.isSecretInputField(args[0])) return method.invoke(ps, args);
 
         args[1] = "secret:" + args[1];
 

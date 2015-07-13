@@ -560,3 +560,28 @@ a demonstration for auto encryption/decryption of db table secret fields in inte
     }
     ```
 
+1. parse sql hint for input/out secret fields auto encryption
+
+    ```java
+    @Test
+    public void inputEncryptionAndOutDecryption() {
+        Jdbc.execute("drop table if exists person");
+        Jdbc.execute("create table  person(name varchar(10), id_no varchar(36), credit_card varchar(32))");
+        Jdbc.execute("/*!secret in(2,3)*/insert into person(name, id_no, credit_card) values(?, ?, ?)",
+                "bingoo", "321421198312111234", "1111222233334444");
+
+        Person person1 = Jdbc.execute(Person.class,
+                "/*!secret out(2, 3)*/select name, id_no, credit_card from person where name = ?",
+                "bingoo");
+
+        assertThat(person1).isEqualTo(
+                new Person("bingoo", "321421198312111234", "1111222233334444"));
+
+        Person person2 = Jdbc.execute(Person.class,
+                "/*!secret in(1) out(2, 3)*/select name, id_no, credit_card from person where id_no = ?",
+                "321421198312111234");
+
+        assertThat(person2).isEqualTo(
+                new Person("bingoo", "321421198312111234", "1111222233334444"));
+    }
+    ```

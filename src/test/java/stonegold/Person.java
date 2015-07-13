@@ -8,6 +8,15 @@ public class Person {
     public Person() {
     }
 
+    @Override
+    public String toString() {
+        return "Person{" +
+                "name='" + name + '\'' +
+                ", idNo='" + idNo + '\'' +
+                ", creditCard='" + creditCard + '\'' +
+                '}';
+    }
+
     public Person(String name, String idNo, String creditCard) {
         this.name = name;
         this.idNo = idNo;

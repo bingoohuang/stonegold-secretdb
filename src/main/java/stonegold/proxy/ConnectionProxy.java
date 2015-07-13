@@ -23,7 +23,7 @@ public class ConnectionProxy implements InvocationHandler {
         String sql = (String) args[0];
         SqlSecretFieldsParser sqlSecretFieldsParser = new SqlSecretFieldsParser();
         final SecretFields secretFields = sqlSecretFieldsParser.parse(sql);
-        if (secretFields.isEmpty()) return invoke;
+        if (secretFields.isInputEmpty() && secretFields.isOutputEmpty()) return invoke;
 
         final PreparedStatement ps = (PreparedStatement) invoke;
 
