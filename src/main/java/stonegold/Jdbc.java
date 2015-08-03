@@ -4,6 +4,7 @@ import com.google.common.base.Throwables;
 import stonegold.proxy.ConnectionProxy;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.*;
 import java.util.Properties;
 
@@ -12,23 +13,31 @@ public class Jdbc {
 
     static {
         try {
-            Properties jdbcProps = new Properties();
             //load a properties file from class path, inside static method
-            jdbcProps.load(Jdbc.class.getClassLoader().getResourceAsStream("jdbc.properties"));
-            url = jdbcProps.getProperty("url");
-            user = jdbcProps.getProperty("user");
-            password = jdbcProps.getProperty("password");
-            secretKey = jdbcProps.getProperty("secret.key");
+            InputStream is = Jdbc.class.getClassLoader().getResourceAsStream("jdbc.properties");
+
+            if (is != null) {
+                Properties jdbcProps = new Properties();
+                jdbcProps.load(is);
+                config(jdbcProps);
+            }
         } catch (IOException ex) {
             throw Throwables.propagate(ex);
         }
+    }
+
+    public static void config(Properties props) {
+        url = props.getProperty("url");
+        user = props.getProperty("user");
+        password = props.getProperty("password");
+        secretKey = props.getProperty("secret.key");
     }
 
     public static String getSecretKey() {
         return secretKey;
     }
 
-    private static Connection getConnection() {
+    public static Connection getConn() {
         try {
             return ConnectionProxy.proxy(DriverManager.getConnection(url, user, password));
         } catch (Exception e) {
@@ -36,9 +45,9 @@ public class Jdbc {
         }
     }
 
-    public static boolean execute(String sql, Object... placeholders) {
+    public static boolean run(String sql, Object... placeholders) {
         try (
-                Connection conn = getConnection();
+                Connection conn = getConn();
                 PreparedStatement ps = conn.prepareStatement(sql)
         ) {
             bindPlaceholders(ps, placeholders);
@@ -48,9 +57,9 @@ public class Jdbc {
         }
     }
 
-    public static <T> T execute(BeanMapper<T> beanMapper, String sql, Object... placeholders) {
+    public static <T> T run(BeanMapper<T> beanMapper, String sql, Object... placeholders) {
         try (
-                Connection conn = getConnection();
+                Connection conn = getConn();
                 PreparedStatement ps = conn.prepareStatement(sql)
         ) {
             bindPlaceholders(ps, placeholders);
@@ -62,9 +71,9 @@ public class Jdbc {
         }
     }
 
-    public static <T> T execute(Class<T> beanClass, String sql, Object... placeholders) {
+    public static <T> T run(Class<T> beanClass, String sql, Object... placeholders) {
         DefaultBeanMapper<T> beanMapper = new DefaultBeanMapper<T>(beanClass);
-        return execute(beanMapper, sql, placeholders);
+        return run(beanMapper, sql, placeholders);
     }
 
     private static void bindPlaceholders(PreparedStatement ps, Object[] placeholders) throws SQLException {
